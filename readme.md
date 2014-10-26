@@ -99,6 +99,8 @@ toggle: function (e) {
 ```
 The functionality implemented allows to reopen any closed issues that are still present in the local storage. So, although we only fetch the open ones in github, once we have them locally and we track them, even if closed we can reopen them.
 
-## Toggle All
+## Credits
+
+Nick Manos solved the initial github problem, and Gabe Khofri pointed us in the right direction when we got lost. The three of us talked and thought through the assignment, so it has been quite a collaborative effort.
 
 
