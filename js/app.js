@@ -38,8 +38,64 @@ jQuery(function ($) {
 		}
 	};
 
+	var soto_hack = {
+		github_setup: function () {
+    	$.ajaxSetup({
+        beforeSend: function (xhr) {
+          xhr.setRequestHeader('Authorization', 'token xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+        }
+      });
+    },
+    fetch_issues: function () {
+     	this.github_setup();
+      $.ajax({
+      	type: 'GET',
+        url: 'https://api.github.com/issues',
+      	async: false,
+        success: function (data, textStatus, jqXHR) {
+        	var all_todos = util.store('todos-jquery');
+        	var existing_issues = $.map(all_todos, function (e, i) { return e.repo + e.number; });
+        	var gh_todos = [];
+          $.each(data, function (i, e) {
+          	if ($.inArray((e.repo + e.number), existing_issues) == -1) {
+          		var ght = {
+          			id: util.uuid(),
+          			title: e.title,
+          			completed: !e.state=='open',
+          			repo: e.repository.name,
+          			number: e.number
+          		};
+             	gh_todos = gh_todos.concat(ght);
+            }
+          });
+          util.store('todos-jquery', all_todos.concat(gh_todos));
+        }
+      });
+    },
+    close_issue: function (ght) {
+    	var toggle_state;
+    	if (ght.completed == true) { toggle_state = {state: "open"}; }
+    	else { toggle_state = {state: "closed"}; };
+
+    	this.github_setup();
+      $.ajax({
+      	type: 'PATCH',
+        url: 'https://api.github.com/repos/sotoseattle/' + ght.repo + '/issues/' + ght.number,
+        dataType: 'json',
+        data: JSON.stringify(toggle_state),
+        success: function (data, textStatus, jqXHR) { soto_hack.toggle_completion(ght); },
+        error: function (xhr, ajaxOptions, thrownError) { console.log(xhr); }
+      });
+    },
+    toggle_completion: function (todo) {
+    	todo.completed = !todo.completed;
+			App.render();
+    }
+	};
+
 	var App = {
 		init: function () {
+			soto_hack.fetch_issues();
 			this.todos = util.store('todos-jquery');
 			this.cacheElements();
 			this.bindEvents();
@@ -51,6 +107,7 @@ jQuery(function ($) {
 				}.bind(this)
 			}).init('/all');
 		},
+
 		cacheElements: function () {
 			this.todoTemplate = Handlebars.compile($('#todo-template').html());
 			this.footerTemplate = Handlebars.compile($('#footer-template').html());
@@ -164,8 +221,11 @@ jQuery(function ($) {
 		},
 		toggle: function (e) {
 			var i = this.indexFromEl(e.target);
-			this.todos[i].completed = !this.todos[i].completed;
-			this.render();
+			if (this.todos[i].repo != undefined) {
+				soto_hack.close_issue(this.todos[i]);
+			} else {
+				soto_hack.toggle_completion(this.todos[i])
+			}
 		},
 		edit: function (e) {
 			var $input = $(e.target).closest('li').addClass('editing').find('.edit');
